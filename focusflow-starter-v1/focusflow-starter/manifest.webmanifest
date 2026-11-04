@@ -1,0 +1,10 @@
+{
+  "name": "FocusFlow Productivity",
+  "short_name": "FocusFlow",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#101827",
+  "description": "Personal productivity and focus assistant",
+  "icons": []
+}
