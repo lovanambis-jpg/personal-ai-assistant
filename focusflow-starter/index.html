@@ -24,13 +24,13 @@
       <div class="nav-muted">▦ &nbsp; Smart Calendar</div>
       <div class="nav-muted">♧ &nbsp; Team Workspace</div>
       <div class="nav-muted">▤ &nbsp; Analytics</div>
-      <div class="sidebar-bottom"><span class="avatar">N</span><div><b>My Workspace</b><small>Personal plan</small></div></div>
+      <div class="sidebar-bottom" data-account role="button" tabindex="0" title="Account"><span class="avatar" id="side-avatar">N</span><div><b id="side-name">My Workspace</b><small id="side-sub">Local mode</small></div></div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div><div class="eyebrow" id="today-label">YOUR PRODUCTIVITY SPACE</div><h1 id="page-title">Good day, Nandra 👋</h1></div>
-        <div class="top-actions"><span class="sync-pill" id="sync-status">● Saved on this device</span><button class="icon-button" title="Notifications">♧</button><span class="avatar">N</span></div>
+        <div class="top-actions"><span class="sync-pill" id="sync-status">● Saved on this device</span><button class="icon-button" title="Notifications">♧</button><button class="avatar avatar-btn" id="account-btn" data-account title="Account" aria-label="Account">N</button></div>
       </header>
 
       <section class="view active" id="view-dashboard">
@@ -81,6 +81,23 @@
   <dialog id="task-dialog"><form method="dialog" id="task-form"><div class="dialog-head"><h3 id="task-dialog-title">Create a task</h3><button class="icon-button" value="cancel" aria-label="Close">×</button></div><input type="hidden" id="task-id"><label class="field-label">Task name<input id="task-title" required maxlength="120" placeholder="What needs to get done?"></label><label class="field-label">Priority<select id="task-priority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label><label class="field-label">Due date<input id="task-due" type="date"></label><div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button" id="task-save" value="default">Save task</button></div></form></dialog>
   <dialog id="habit-dialog"><form method="dialog" id="habit-form"><div class="dialog-head"><h3>New habit</h3><button class="icon-button" value="cancel">×</button></div><label class="field-label">Habit name<input id="habit-title" required maxlength="80" placeholder="e.g. Read 10 pages"></label><div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button" value="default">Add habit</button></div></form></dialog>
   <div class="toast" id="toast" role="status"></div>
+
+  <dialog id="account-dialog">
+    <div class="dialog-head"><h3>Account</h3><button class="icon-button" type="button" id="account-close" aria-label="Close">×</button></div>
+    <div id="account-out">
+      <p class="account-note">Sign in with Google to prepare your account for cloud sync (coming next). Your tasks, habits and timer stay on this device for now.</p>
+      <button class="primary-button google-btn" type="button" id="google-signin">Continue with Google</button>
+      <p class="account-hint" id="account-hint" role="status"></p>
+    </div>
+    <div id="account-in" hidden>
+      <div class="account-user"><span class="avatar" id="dialog-avatar">N</span><div><b id="account-name"></b><small id="account-email"></small></div></div>
+      <p class="account-note">Signed in with Google. Signing out keeps your data on this device.</p>
+      <button class="secondary-button" type="button" id="signout-btn">Sign out</button>
+    </div>
+  </dialog>
+  <script src="./assets/config.js"></script>
+  <script src="./assets/auth.js"></script>
+  <script src="./assets/db.js"></script>
   <script src="./assets/app.js"></script>
 </body>
 </html>

@@ -1,19 +1,17 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
-const KEY = "focusflow-v1";
 const dayStr = (off=0) => { const d=new Date(); d.setDate(d.getDate()+off); return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const today = () => dayStr(0);
 const streak = (logs) => { const s=new Set(logs||[]); let off=s.has(dayStr(0))?0:-1, n=0; while(s.has(dayStr(off))){n++;off--;} return n; };
-const DEFAULTS = () => ({tasks:[],habits:[],sessions:[],settings:{focus:25,short:5,long:15}});
-function loadState(){ try { const s=JSON.parse(localStorage.getItem(KEY)||"null"); if(s&&typeof s==="object"){ const d=DEFAULTS(); return {tasks:Array.isArray(s.tasks)?s.tasks:d.tasks,habits:Array.isArray(s.habits)?s.habits:d.habits,sessions:Array.isArray(s.sessions)?s.sessions:d.sessions,settings:{...d.settings,...(s.settings||{})}}; } } catch(e){ console.warn("Could not read saved data, starting fresh.",e); } return DEFAULTS(); }
-let state = loadState();
+let state = {tasks:[],habits:[],sessions:[],settings:{focus:25,short:5,long:15}}; // replaced by FocusDB.start() in boot()
 let filter = "all";
+let greetName = "Nandra", currentView = "dashboard";
 let mode = "focus", remaining = state.settings.focus*60, interval = null, running = false, endAt = null, planned = state.settings.focus;
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); $("#sync-status").textContent = "● Saved on this device"; } catch(e){ $("#sync-status").textContent = "● Could not save (storage full or blocked)"; } render(); };
+const save = () => { render(); $("#sync-status").textContent = "● Saving…"; FocusDB.save(state).then(()=>{ $("#sync-status").textContent = FocusDB.mode==="indexeddb" ? "● Saved on this device" : "● Saved on this device (basic mode)"; }).catch(()=>{ $("#sync-status").textContent = "● Could not save (storage full or blocked)"; }); };
 const id = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random());
 const toast = (msg) => { const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); };
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function setView(name){$$(".view").forEach(v=>v.classList.toggle("active",v.id===`view-${name}`));$$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===name));$("#page-title").textContent=({dashboard:"Good day, Nandra 👋",tasks:"My Tasks",focus:"Focus Timer",habits:"Habit Tracker"})[name]||"FocusFlow";window.scrollTo(0,0);}
+function setView(name){currentView=name;$$(".view").forEach(v=>v.classList.toggle("active",v.id===`view-${name}`));$$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===name));$("#page-title").textContent=({dashboard:"Good day, "+greetName+" 👋",tasks:"My Tasks",focus:"Focus Timer",habits:"Habit Tracker"})[name]||"FocusFlow";window.scrollTo(0,0);}
 $$("[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
 $$("[data-go]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.go)));
 function taskMarkup(t){return `<div class="task-row ${t.done?"completed":""}"><input class="task-check" type="checkbox" data-complete="${t.id}" ${t.done?"checked":""}><div class="task-main"><b>${escapeHtml(t.title)}</b><small>${t.due?`Due ${t.due}`:"No deadline"}</small></div><span class="priority ${t.priority}">${t.priority}</span><div class="row-actions"><button title="Edit" data-edit="${t.id}">✎</button><button title="Delete" data-delete="${t.id}">×</button></div></div>`}
@@ -38,4 +36,55 @@ $("#timer-reset").addEventListener("click",()=>selectMode(mode));
 $("#today-label").textContent=new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).toUpperCase();
 if("serviceWorker" in navigator && location.protocol!=="file:"){navigator.serviceWorker.register("./service-worker.js").catch(()=>{});}
 window.addEventListener("online",()=>{$("#sync-status").textContent="● Online · local data saved";});window.addEventListener("offline",()=>{$("#sync-status").textContent="● Offline · local mode";});
-["focus","short","long"].forEach(k=>{$("#"+k+"-length").value=state.settings[k];});remaining=durations()[mode]*60;planned=durations()[mode];render();displayTimer();
+async function boot(){
+  try { const res = await FocusDB.start(); state = res.state; if(res.migrated) toast("Existing data moved to IndexedDB"); }
+  catch(e){ console.error(e); }
+  ["focus","short","long"].forEach(k=>{$("#"+k+"-length").value=state.settings[k];});
+  remaining=durations()[mode]*60; planned=durations()[mode];
+  $("#sync-status").textContent = FocusDB.mode==="indexeddb" ? "● Saved on this device" : "● Saved on this device (basic mode)";
+  render(); displayTimer();
+}
+boot();
+
+// ---- Account (Google sign-in) ----
+function setAvatar(el, url, initial){
+  el.textContent = "";
+  if(url){ const img=document.createElement("img"); img.src=url; img.alt=""; img.referrerPolicy="no-referrer"; img.onerror=()=>{ el.textContent=initial; }; el.appendChild(img); }
+  else el.textContent = initial;
+}
+function renderAccount(){
+  const st = FocusAuth.status, p = FocusAuth.profile();
+  const label = p ? (p.name || p.email) : "";
+  const initial = (label.trim().charAt(0) || "N").toUpperCase();
+  ["#account-btn","#side-avatar","#dialog-avatar"].forEach(sel=>setAvatar($(sel), p && p.avatar, initial));
+  $("#side-name").textContent = p ? label : "My Workspace";
+  $("#side-sub").textContent = p ? "Signed in with Google" : "Local mode";
+  greetName = (p && p.name.split(" ")[0]) || "Nandra";
+  if(currentView==="dashboard") $("#page-title").textContent = "Good day, "+greetName+" 👋";
+  $("#account-out").hidden = !!p; $("#account-in").hidden = !p;
+  $("#account-name").textContent = p ? (p.name || p.email) : ""; $("#account-email").textContent = p ? p.email : "";
+  const btn = $("#google-signin");
+  btn.disabled = st!=="ready";
+  $("#account-hint").textContent = ({
+    unconfigured:"Cloud login is not set up yet. Add your Supabase URL and key in assets/config.js.",
+    loading:"Connecting to the login service…",
+    unavailable:"Could not reach the login service. Check your connection and reload.",
+    ready:""
+  })[st] || "";
+}
+$$("[data-account]").forEach(el=>{
+  el.addEventListener("click",()=>{ renderAccount(); $("#account-dialog").showModal(); });
+  el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); el.click(); } });
+});
+$("#account-close").addEventListener("click",()=>$("#account-dialog").close());
+$("#google-signin").addEventListener("click",async()=>{
+  const btn=$("#google-signin"); btn.disabled=true; btn.textContent="Redirecting to Google…";
+  try{ await FocusAuth.signInWithGoogle(); }
+  catch(e){ console.error(e); toast("Could not start Google sign-in"); btn.textContent="Continue with Google"; renderAccount(); }
+});
+$("#signout-btn").addEventListener("click",async()=>{
+  try{ await FocusAuth.signOut(); $("#account-dialog").close(); toast("Signed out. Your data stays on this device."); }
+  catch(e){ console.error(e); toast("Could not sign out"); }
+});
+FocusAuth.onChange(renderAccount);
+FocusAuth.init();
