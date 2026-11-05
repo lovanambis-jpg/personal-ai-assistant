@@ -1,7 +1,7 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const KEY = "focusflow-v1";
-const today = () => new Date().toISOString().slice(0,10);
+c   const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 let state = JSON.parse(localStorage.getItem(KEY) || "null") || {tasks:[],habits:[],sessions:[],settings:{focus:25,short:5,long:15}};
 let filter = "all";
 let mode = "focus", remaining = state.settings.focus*60, interval = null, running = false;
